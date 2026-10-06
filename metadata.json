@@ -1,0 +1,6 @@
+{
+  "name": "Zynetra - Autonomous Analytics & Decision Platform",
+  "description": "Autonomous data-to-decision analytics platform performing automated ingestion, dataset profiling, intelligent cleaning, root-cause cause trees, predictive modeling, what-if simulations, and explainable recommendations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
