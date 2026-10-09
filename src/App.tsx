@@ -61,9 +61,9 @@ import LoginPage from './components/pages/LoginPage';
 import SignUpPage from './components/pages/SignUpPage';
 import ForgotPasswordPage from './components/pages/ForgotPasswordPage';
 import AnalyticsOverviewPage from './components/pages/AnalyticsOverviewPage';
-import { pathToTab, tabToPath, ANALYTICS_ROUTES } from './utils/navigation';
-import { AuthPageState, User } from './types/auth';
-import { getStoredSessionUser, logoutUser, DEFAULT_USER } from './utils/authService';
+import { pathToTab, tabToPath, pathToAuthPage, authPageToPath, ANALYTICS_ROUTES } from './utils/navigation';
+import { AuthPageState, User, OnboardingConfig } from './types/auth';
+import { getStoredSessionUser, logoutUser, saveUserOnboarding } from './utils/authService';
 import {
   parseCSV,
   profileDataset,
@@ -99,18 +99,51 @@ export default function App() {
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-  // Top-Level Page Navigation: Default to core platform workspace
+  // Top-Level Page Navigation: Default unauthenticated visitors to Zynetra Landing Page
   const [hasSeenStartup, setHasSeenStartup] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredSessionUser());
   const [currentPage, setCurrentPage] = useState<AuthPageState>(() => {
-    return (localStorage.getItem('zynetra_current_page') as AuthPageState) || 'app';
+    const sessionUser = getStoredSessionUser();
+    return pathToAuthPage(window.location.pathname, !!sessionUser);
   });
-  const [currentUser, setCurrentUser] = useState<User | null>(() => getStoredSessionUser() || DEFAULT_USER);
+
+  const handleNavigateAuthPage = (page: AuthPageState) => {
+    // Protect /app and /onboarding routes when unauthenticated
+    if ((page === 'app' || page === 'onboarding') && !currentUser) {
+      setCurrentPage('login');
+      try {
+        window.history.pushState({ page: 'login' }, '', '/login');
+      } catch {
+        // Ignore sandboxed iframe history errors
+      }
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    setCurrentPage(page);
+    const targetPath = authPageToPath(page, activeTab);
+    try {
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ page }, '', targetPath);
+      }
+    } catch {
+      // Ignore sandboxed iframe history errors
+    }
+    window.scrollTo(0, 0);
+  };
 
   const handleLogout = () => {
     logoutUser();
     setCurrentUser(null);
     setIsProfileOpen(false);
+    setIsSettingsOpen(false);
     setCurrentPage('landing');
+    try {
+      window.history.pushState({ page: 'landing' }, '', '/');
+    } catch {
+      // Ignore sandboxed iframe history errors
+    }
+    window.scrollTo(0, 0);
   };
 
   const handleToggleTheme = () => {
@@ -210,8 +243,13 @@ export default function App() {
   // Synchronize route changes with browser back/forward and History API
   useEffect(() => {
     const handlePopState = () => {
-      const tab = pathToTab(window.location.pathname);
-      setActiveTab(tab);
+      const sessionUser = getStoredSessionUser();
+      const nextAuthPage = pathToAuthPage(window.location.pathname, !!sessionUser);
+      setCurrentPage(nextAuthPage);
+      if (nextAuthPage === 'app') {
+        const tab = pathToTab(window.location.pathname);
+        setActiveTab(tab);
+      }
       if (mainScrollRef.current) {
         mainScrollRef.current.scrollTop = 0;
       }
@@ -475,21 +513,81 @@ export default function App() {
     setCurrentWorkspace(newWs);
   };
 
+  // Handle Onboarding Completion: save user config and tailor workspace
+  const handleCompleteOnboarding = (config: OnboardingConfig) => {
+    if (currentUser) {
+      const updatedUser = saveUserOnboarding(currentUser.id, config);
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      }
+    }
+
+    const companyName = config.company.trim() || currentUser?.organization || 'Enterprise';
+    const wsName = `${companyName} ${config.industry} Hub`;
+    const newWs: Workspace = {
+      id: `ws-${Date.now()}`,
+      name: wsName,
+      organization: companyName,
+      createdAt: new Date().toISOString().split('T')[0],
+      datasetCount: 4,
+      role: 'Owner',
+    };
+    setWorkspaces((prev) => [newWs, ...prev]);
+    setCurrentWorkspace(newWs);
+
+    // Match industry to best enterprise preset if available
+    const industryLower = config.industry.toLowerCase();
+    const matchedPreset =
+      ENTERPRISE_DATASETS.find(
+        (p) =>
+          p.domain.toLowerCase().includes(industryLower) ||
+          p.name.toLowerCase().includes(industryLower)
+      ) || ENTERPRISE_DATASETS[0];
+
+    handleDatasetLoaded(
+      matchedPreset.profile,
+      matchedPreset.cleaningActions,
+      parseCSV(matchedPreset.rawCsv),
+      matchedPreset
+    );
+
+    if (config.primaryObjective) {
+      setObjective(`${config.primaryObjective}: ${matchedPreset.objective}`);
+    }
+
+    setActiveTab('overview');
+    setCurrentPage('app');
+    try {
+      window.history.pushState({ page: 'app', tab: 'overview' }, '', '/app');
+    } catch {
+      // Ignore sandboxed iframe history errors
+    }
+    window.scrollTo(0, 0);
+  };
+
   // STARTUP ANIMATION (Plays on initial app open, very subtle & elegant)
   if (!hasSeenStartup) {
     return <StartupAnimation onComplete={() => setHasSeenStartup(true)} />;
   }
 
-  // PAGE 1: Commercial Landing & Home Page
+  // PAGE 1: Zynetra Commercial Landing & Home Page
   if (currentPage === 'landing') {
     return (
       <LandingPage
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigateAuthPage}
         onInstantDemo={() => {
-          setCurrentUser(DEFAULT_USER);
-          setCurrentPage('onboarding');
+          if (currentUser) {
+            setCurrentPage('app');
+            try {
+              window.history.pushState({ page: 'app' }, '', '/app');
+            } catch {}
+          } else {
+            handleNavigateAuthPage('signup');
+          }
         }}
         isLoggedIn={!!currentUser}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
     );
   }
@@ -498,11 +596,18 @@ export default function App() {
   if (currentPage === 'login') {
     return (
       <LoginPage
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigateAuthPage}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
-          setCurrentPage('app');
+          const nextStep: AuthPageState = user.onboarded === false ? 'onboarding' : 'app';
+          setCurrentPage(nextStep);
+          try {
+            window.history.pushState({ page: nextStep }, '', nextStep === 'onboarding' ? '/onboarding' : '/app');
+          } catch {}
+          window.scrollTo(0, 0);
         }}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
     );
   }
@@ -511,11 +616,17 @@ export default function App() {
   if (currentPage === 'signup') {
     return (
       <SignUpPage
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigateAuthPage}
         onSignUpSuccess={(user) => {
           setCurrentUser(user);
           setCurrentPage('onboarding');
+          try {
+            window.history.pushState({ page: 'onboarding' }, '', '/onboarding');
+          } catch {}
+          window.scrollTo(0, 0);
         }}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
     );
   }
@@ -524,7 +635,9 @@ export default function App() {
   if (currentPage === 'forgot-password') {
     return (
       <ForgotPasswordPage
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigateAuthPage}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
     );
   }
@@ -534,8 +647,16 @@ export default function App() {
     return (
       <OnboardingPage
         user={currentUser}
-        onComplete={() => setCurrentPage('app')}
-        onSkip={() => setCurrentPage('app')}
+        onComplete={handleCompleteOnboarding}
+        onSkip={() => {
+          setCurrentPage('app');
+          try {
+            window.history.pushState({ page: 'app' }, '', '/app');
+          } catch {}
+          window.scrollTo(0, 0);
+        }}
+        isDark={isDark}
+        onToggleTheme={handleToggleTheme}
       />
     );
   }
@@ -565,6 +686,7 @@ export default function App() {
         isAnalyzing={isPipelineRunning}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
+        onNavigateTab={handleNavigateTab}
         onOpenUpload={() => setIsUploadModalOpen(true)}
         onOpenGenerateDashboards={() => setIsGenerateModalOpen(true)}
         isCustomDataset={isCustomDataset}
@@ -573,7 +695,7 @@ export default function App() {
         onOpenHelp={() => setIsHelpModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
-        onNavigateLanding={() => setCurrentPage('landing')}
+        onNavigateLanding={() => handleNavigateAuthPage('landing')}
         onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
       />
 
@@ -601,6 +723,7 @@ export default function App() {
           onOpenUpload={() => setIsUploadModalOpen(true)}
           onOpenGenerateDashboards={() => setIsGenerateModalOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Scrollable Main Area with automatic scroll-to-top on route change */}
@@ -660,7 +783,7 @@ export default function App() {
             )}
 
             {/* Active Route View Rendering: Each module gets its own dedicated page starting at the top */}
-            {activeTab === 'overview' && (
+            {(activeTab === 'overview' || activeTab === 'analytics') && (
               <AnalyticsOverviewPage
                 profile={profile}
                 objective={objective}
@@ -791,6 +914,43 @@ export default function App() {
                 isDark={isDark}
               />
             )}
+
+            {activeTab === 'profile' && (
+              <UserProfileModal
+                isOpen={true}
+                onClose={() => handleNavigateTab('overview')}
+                isDark={isDark}
+                currentUser={currentUser}
+                onUpdateUser={setCurrentUser}
+                onLogout={handleLogout}
+                mode="page"
+                currentWorkspace={currentWorkspace}
+                onNavigateTab={handleNavigateTab}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsModal
+                isOpen={true}
+                onClose={() => handleNavigateTab('overview')}
+                isDark={isDark}
+                currentTheme={currentTheme}
+                onSelectTheme={handleSelectTheme}
+                onToggleDarkMode={handleToggleTheme}
+                onSetDarkMode={handleSetDarkMode}
+                mode="page"
+                currentUser={currentUser}
+                onUpdateUser={setCurrentUser}
+                currentWorkspace={currentWorkspace}
+                onUpdateWorkspace={(name, org) => {
+                  const updatedWs = { ...currentWorkspace, name, organization: org };
+                  setCurrentWorkspace(updatedWs);
+                  setWorkspaces((prev) =>
+                    prev.map((w) => (w.id === updatedWs.id ? updatedWs : w))
+                  );
+                }}
+              />
+            )}
           </main>
 
           {/* Footer */}
@@ -832,13 +992,26 @@ export default function App() {
         onSelectTheme={handleSelectTheme}
         onToggleDarkMode={handleToggleTheme}
         onSetDarkMode={handleSetDarkMode}
+        currentUser={currentUser}
+        onUpdateUser={setCurrentUser}
+        currentWorkspace={currentWorkspace}
+        onUpdateWorkspace={(name, org) => {
+          const updatedWs = { ...currentWorkspace, name, organization: org };
+          setCurrentWorkspace(updatedWs);
+          setWorkspaces((prev) =>
+            prev.map((w) => (w.id === updatedWs.id ? updatedWs : w))
+          );
+        }}
       />
       <UserProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         isDark={isDark}
         currentUser={currentUser}
+        onUpdateUser={setCurrentUser}
         onLogout={handleLogout}
+        currentWorkspace={currentWorkspace}
+        onNavigateTab={handleNavigateTab}
       />
       <InterpretabilityHelpModal
         isOpen={isHelpModalOpen}

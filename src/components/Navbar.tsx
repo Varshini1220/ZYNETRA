@@ -15,8 +15,9 @@ import {
   Home,
   CheckCircle2,
   Menu,
+  User as UserIcon,
 } from 'lucide-react';
-import { Workspace } from '../types';
+import { Workspace, MainTab } from '../types';
 import { ThemeId } from '../types/theme';
 import { User } from '../types/auth';
 import ThemeSelector from './ThemeSelector';
@@ -42,6 +43,7 @@ interface NavbarProps {
   isAnalyzing: boolean;
   onOpenSettings: () => void;
   onOpenProfile: () => void;
+  onNavigateTab?: (tab: MainTab) => void;
   onOpenUpload?: () => void;
   onOpenGenerateDashboards?: () => void;
   isCustomDataset?: boolean;
@@ -73,6 +75,7 @@ export default function Navbar({
   isAnalyzing,
   onOpenSettings,
   onOpenProfile,
+  onNavigateTab,
   onOpenUpload,
   onOpenGenerateDashboards,
   isCustomDataset,
@@ -89,6 +92,7 @@ export default function Navbar({
   const [newWsName, setNewWsName] = useState('');
   const [newWsOrg, setNewWsOrg] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const activeTheme = THEME_DEFINITIONS[currentTheme] || THEME_DEFINITIONS.indigo;
 
@@ -360,26 +364,118 @@ export default function Navbar({
             <SlidersHorizontal className="w-3.5 h-3.5" />
           </button>
 
-          {/* User Profile Trigger */}
-          <button
-            onClick={onOpenProfile}
-            className={`flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-lg border text-xs transition-colors min-h-[36px] ${
-              isDark
-                ? 'border-[#3E352F] bg-[#26201D] hover:bg-[#322A26] text-[#EDE6DE]'
-                : 'border-[#DDD4CA] bg-white hover:bg-[#EEE7DE] text-[#292522]'
-            }`}
-            title="User Profile & Security"
-          >
-            <div
-              className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0"
-              style={{ backgroundColor: activeTheme.primaryColor }}
+          {/* User Avatar + Name + Profile Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className={`flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-lg border text-xs transition-colors min-h-[36px] cursor-pointer ${
+                isDark
+                  ? 'border-[#3E352F] bg-[#26201D] hover:bg-[#322A26] text-[#EDE6DE]'
+                  : 'border-[#DDD4CA] bg-white hover:bg-[#EEE7DE] text-[#292522]'
+              }`}
+              title="Zynetra User Profile & Account"
             >
-              {currentUser?.name ? currentUser.name[0].toUpperCase() : 'V'}
-            </div>
-            <span className="font-semibold hidden xl:inline truncate max-w-[90px]">
-              {currentUser?.name || 'Vihaan'}
-            </span>
-          </button>
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0"
+                style={{ backgroundColor: activeTheme.primaryColor }}
+              >
+                {currentUser?.name ? currentUser.name[0].toUpperCase() : 'Z'}
+              </div>
+              <span className="font-semibold hidden xl:inline truncate max-w-[100px]">
+                {currentUser?.name || 'Executive'}
+              </span>
+              <ChevronDown className={`w-3 h-3 ${isDark ? 'text-[#A3988E]' : 'text-[#756D65]'}`} />
+            </button>
+
+            {showProfileDropdown && (
+              <div
+                className={`absolute right-0 mt-2 w-60 rounded-xl border shadow-lg p-2 z-50 animate-subtle-fade text-xs ${
+                  isDark
+                    ? 'border-[#3E352F] bg-[#26201D] text-[#EDE6DE]'
+                    : 'border-[#DDD4CA] bg-white text-[#292522]'
+                }`}
+              >
+                <div className={`px-2.5 py-2 border-b mb-1 ${isDark ? 'border-[#3E352F]' : 'border-[#DDD4CA]'}`}>
+                  <div className="font-bold truncate">{currentUser?.name || 'Executive User'}</div>
+                  <div className={`text-[11px] truncate ${isDark ? 'text-[#A3988E]' : 'text-[#756D65]'}`}>
+                    {currentUser?.email || 'executive@zynetra.io'}
+                  </div>
+                  <div
+                    className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold"
+                    style={{
+                      backgroundColor: `${activeTheme.primaryColor}20`,
+                      color: activeTheme.primaryColor,
+                    }}
+                  >
+                    {currentUser?.role || 'Executive'} &bull; {currentUser?.organization || currentWorkspace.organization}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    if (onNavigateTab) onNavigateTab('profile');
+                    else onOpenProfile();
+                  }}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer ${
+                    isDark ? 'hover:bg-[#322A26]' : 'hover:bg-[#F8F3EC]'
+                  }`}
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  <span>Zynetra Profile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    if (onNavigateTab) onNavigateTab('settings');
+                    else onOpenSettings();
+                  }}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer ${
+                    isDark ? 'hover:bg-[#322A26]' : 'hover:bg-[#F8F3EC]'
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Workspace Settings</span>
+                </button>
+
+                {onNavigateLanding && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      onNavigateLanding();
+                    }}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer ${
+                      isDark ? 'hover:bg-[#322A26]' : 'hover:bg-[#F8F3EC]'
+                    }`}
+                  >
+                    <Home className="w-3.5 h-3.5" />
+                    <span>Zynetra Home Page</span>
+                  </button>
+                )}
+
+                {onLogout && (
+                  <div className={`border-t mt-1 pt-1 ${isDark ? 'border-[#3E352F]' : 'border-[#DDD4CA]'}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        onLogout();
+                      }}
+                      className="w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 text-[#C48C7B] hover:bg-[#A56F5D]/10 font-semibold transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Return to Home / Landing Page */}
           {onNavigateLanding && (

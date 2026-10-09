@@ -166,6 +166,7 @@ export interface Workspace {
 
 export type MainTab =
   | 'overview'
+  | 'analytics'
   | 'dashboard'
   | 'presentations'
   | 'data'
@@ -175,5 +176,7 @@ export type MainTab =
   | 'decisions'
   | 'news'
   | 'reports'
-  | 'ingest';
+  | 'ingest'
+  | 'profile'
+  | 'settings';
 

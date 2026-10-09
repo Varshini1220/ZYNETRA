@@ -15,6 +15,8 @@ import ZynetraLogo from '../brand/ZynetraLogo';
 interface LoginPageProps {
   onNavigate: (page: AuthPageState) => void;
   onLoginSuccess: (user: User) => void;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
@@ -37,7 +39,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       if (result.success && result.user) {
         onLoginSuccess(result.user);
       } else {
-        setError(result.error || 'Authentication failed. Please verify credentials.');
+        setError(result.error || 'Authentication failed. Please verify your work email and password.');
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -45,51 +47,64 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     }
   };
 
-  const handleQuickDemoLogin = () => {
-    setEmail('varshini1662006@gmail.com');
-    setPassword('password123');
-  };
-
   return (
-    <div className="min-h-screen bg-[#F5F0E9] text-[#292522] flex flex-col justify-between p-4 sm:p-12 font-sans selection:bg-[#49362F] selection:text-white">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col justify-between p-4 sm:p-10 font-sans selection:bg-[var(--theme-primary)] selection:text-white transition-colors duration-200">
       {/* Top Header */}
-      <header className="max-w-5xl w-full mx-auto flex items-center justify-between border-b border-[#DDD4CA] pb-5 sm:pb-6 gap-2">
-        <ZynetraLogo size="md" />
+      <header className="max-w-5xl w-full mx-auto flex items-center justify-between border-b border-[var(--border-subtle)] pb-5 gap-2">
         <button
+          type="button"
           onClick={() => onNavigate('landing')}
-          className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#756D65] hover:text-[#292522] transition-colors shrink-0"
+          className="text-left cursor-pointer focus:outline-none"
+        >
+          <ZynetraLogo size="md" showSubtitle={true} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('landing')}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return Home</span>
+          <span>Back to Zynetra</span>
         </button>
       </header>
 
       {/* Main Form Center */}
       <main className="max-w-md w-full mx-auto my-6 sm:my-12 animate-subtle-fade">
-        <div className="bg-white rounded-xl border border-[#DDD4CA] p-5 sm:p-10 shadow-sm">
-          <div className="mb-8">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-[#49362F] font-semibold">
-              Enterprise Access
-            </span>
-            <h1 className="text-2xl font-bold text-[#292522] mt-1 tracking-tight">
+        <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-6 sm:p-10 shadow-sm">
+          <div className="mb-7">
+            <div className="text-xs font-mono text-[var(--theme-text)] font-semibold">
+              ZYNETRA &middot; Autonomous Analytics &amp; Decision Platform
+            </div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] mt-1.5 tracking-tight">
               Sign In to Zynetra
             </h1>
-            <p className="text-xs text-[#756D65] mt-2">
-              Enter your credentials to access your autonomous analytics workspace.
+            <p className="text-xs text-[var(--text-secondary)] mt-1.5">
+              Enter your work email and password to access your Zynetra Workspace.
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3 rounded-lg bg-[#A56F5D]/10 border border-[#A56F5D]/30 text-xs text-[#A56F5D] flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="mb-6 p-3.5 rounded-lg bg-[var(--terracotta)]/10 border border-[var(--terracotta)]/30 text-xs text-[var(--terracotta)] flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div>{error}</div>
+                {error.toLowerCase().includes('create an account') && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('signup')}
+                    className="font-semibold underline cursor-pointer"
+                  >
+                    Create your Zynetra account now &rarr;
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-[#292522] font-semibold mb-1.5 uppercase tracking-wider text-[11px]">
-                Work Email Address
+              <label className="block text-[var(--text-primary)] font-semibold mb-1.5">
+                Work Email
               </label>
               <div className="relative">
                 <input
@@ -97,24 +112,24 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@enterprise.com"
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-[#F8F3EC] border border-[#DDD4CA] text-[#292522] placeholder-[#756D65]/60 focus:outline-none focus:border-[#49362F] transition-colors"
+                  placeholder="name@company.com"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--theme-primary)] transition-colors"
                 />
-                <Mail className="w-4 h-4 text-[#756D65] absolute left-3 top-3" />
+                <Mail className="w-4 h-4 text-[var(--text-secondary)] absolute left-3 top-3" />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[#292522] font-semibold uppercase tracking-wider text-[11px]">
+                <label className="text-[var(--text-primary)] font-semibold">
                   Password
                 </label>
                 <button
                   type="button"
                   onClick={() => onNavigate('forgot-password')}
-                  className="text-[11px] text-[#49362F] hover:underline font-medium"
+                  className="text-xs text-[var(--theme-text)] hover:underline font-semibold cursor-pointer"
                 >
-                  Forgot password?
+                  Forgot Password?
                 </button>
               </div>
               <div className="relative">
@@ -123,14 +138,15 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-[#F8F3EC] border border-[#DDD4CA] text-[#292522] placeholder-[#756D65]/60 focus:outline-none focus:border-[#49362F] transition-colors"
+                  placeholder="Enter your password"
+                  className="w-full pl-9 pr-16 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder-[var(--text-secondary)]/60 focus:outline-none focus:border-[var(--theme-primary)] transition-colors"
                 />
-                <Lock className="w-4 h-4 text-[#756D65] absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[var(--text-secondary)] absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-[#756D65] hover:text-[#292522]"
+                  className="absolute right-3 top-2.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -138,55 +154,48 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-[#756D65]">
+              <label className="flex items-center gap-2 cursor-pointer text-[var(--text-secondary)]">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#DDD4CA] text-[#49362F] focus:ring-[#49362F]"
+                  className="rounded border-[var(--border-subtle)]"
+                  style={{ accentColor: 'var(--theme-primary)' }}
                 />
-                <span>Remember this terminal</span>
+                <span>Remember Me</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-lg bg-[#49362F] hover:bg-[#3A2B25] text-white text-xs font-semibold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 mt-4 shadow-sm"
+              className="w-full py-3 rounded-lg text-white text-xs font-semibold uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-sm hover:brightness-110 cursor-pointer disabled:opacity-60"
+              style={{ backgroundColor: 'var(--theme-primary)' }}
             >
-              <span>{isLoading ? 'Authenticating...' : 'Sign In'}</span>
+              <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </form>
-
-          {/* Quick Demo Fill button */}
-          <div className="mt-6 pt-6 border-t border-[#DDD4CA] text-center">
-            <button
-              type="button"
-              onClick={handleQuickDemoLogin}
-              className="text-[11px] uppercase tracking-wider text-[#756D65] hover:text-[#49362F] font-semibold"
-            >
-              Auto-fill sample executive credentials &rarr;
-            </button>
-          </div>
         </div>
 
-        <div className="text-center mt-6 text-xs text-[#756D65]">
-          Do not have an enterprise account?{' '}
+        <div className="text-center mt-6 text-xs text-[var(--text-secondary)]">
+          Don&apos;t have a Zynetra account?{' '}
           <button
+            type="button"
             onClick={() => onNavigate('signup')}
-            className="text-[#49362F] font-semibold hover:underline"
+            className="text-[var(--theme-text)] font-semibold hover:underline cursor-pointer"
           >
-            Create an account
+            Create one
           </button>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="max-w-5xl w-full mx-auto border-t border-[#DDD4CA] pt-6 flex items-center justify-between text-xs text-[#756D65]">
-        <span>Protected by enterprise 256-bit encryption</span>
-        <span>Zynetra Security Standard</span>
+      <footer className="max-w-5xl w-full mx-auto border-t border-[var(--border-subtle)] pt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[var(--text-secondary)]">
+        <span>ZYNETRA &middot; Autonomous Analytics &amp; Decision Platform</span>
+        <span>Protected by 256-bit cryptographic session security</span>
       </footer>
     </div>
   );
 }
+
